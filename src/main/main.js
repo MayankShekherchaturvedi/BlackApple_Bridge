@@ -32,6 +32,11 @@ app.whenReady().then(() => {
     return await getConnectedDevices();
   });
 
+  ipcMain.handle('adb:listDirectory', async (event, deviceId, path) => {
+    const { listDirectory } = require('./adbBridge');
+    return await listDirectory(deviceId, path);
+  });
+
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

@@ -53,7 +53,51 @@ const getConnectedDevices = async () => {
     }
 };
 
+// Add this below your getConnectedDevices function
+
+const listDirectory = async (deviceId, directoryPath = '/sdcard') => {
+    try {
+        // Run 'ls -lA' to get detailed list, including hidden files
+        const output = await runAdbCommand(['-s', deviceId, 'shell', 'ls', '-lA', directoryPath]);
+        const lines = output.split('\n');
+        const files = [];
+
+        for (const line of lines) {
+            if (!line || line.startsWith('total')) continue;
+
+            // Parse standard Linux 'ls -l' output
+            // Example line: drwxrwx--- 2 root everybdy 4096 2023-10-24 10:20 Download
+            const parts = line.split(/\s+/);
+            if (parts.length >= 7) {
+                const permissions = parts[0];
+                const isDirectory = permissions.startsWith('d');
+                const name = parts.slice(parts.length > 8 ? 7 : 6).join(' '); // Rejoin names with spaces
+
+                files.push({
+                    name,
+                    isDirectory,
+                    path: `${directoryPath === '/' ? '' : directoryPath}/${name}`,
+                    permissions
+                });
+            }
+        }
+
+        // Sort directories first, then alphabetically
+        return files.sort((a, b) => {
+            if (a.isDirectory === b.isDirectory) return a.name.localeCompare(b.name);
+            return a.isDirectory ? -1 : 1;
+        });
+
+    } catch (error) {
+        console.error(`Failed to list directory ${directoryPath}:`, error);
+        throw error;
+    }
+};
+
+
+
 module.exports = {
     getConnectedDevices,
+    listDirectory, // Export the new function
     runAdbCommand
 };
