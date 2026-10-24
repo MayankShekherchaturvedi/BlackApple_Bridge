@@ -94,10 +94,46 @@ const listDirectory = async (deviceId, directoryPath = '/sdcard') => {
     }
 };
 
+const transferFile = (deviceId, action, sourcePath, destPath, onProgress) => {
+    return new Promise((resolve, reject) => {
+        // action must be 'push' or 'pull'
+        const args = ['-s', deviceId, action, '-p', sourcePath, destPath];
+        const adbProcess = spawn(adbPath, args);
+
+        // Regex to catch ADB's progress format: "[ 45%]" or "[100%]"
+        const progressRegex = /\[\s*(\d+)%\]/;
+
+        adbProcess.stdout.on('data', (data) => {
+            const output = data.toString();
+            const match = output.match(progressRegex);
+
+            if (match && match[1]) {
+                const percentage = parseInt(match[1], 10);
+                onProgress(percentage); // Relay the number back to the main process
+            }
+        });
+
+        let errorOutput = '';
+        adbProcess.stderr.on('data', (data) => {
+            errorOutput += data.toString();
+        });
+
+        adbProcess.on('close', (code) => {
+            if (code === 0) {
+                onProgress(100); // Ensure it caps at 100% on success
+                resolve();
+            } else {
+                reject(new Error(`Transfer failed (${code}): ${errorOutput}`));
+            }
+        });
+    });
+};
+
 
 
 module.exports = {
     getConnectedDevices,
     listDirectory, // Export the new function
-    runAdbCommand
+    runAdbCommand,
+    transferFile
 };

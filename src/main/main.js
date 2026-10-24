@@ -37,6 +37,21 @@ app.whenReady().then(() => {
     return await listDirectory(deviceId, path);
   });
 
+  ipcMain.handle('adb:transfer', async (event, { deviceId, action, source, dest }) => {
+    const { transferFile } = require('./adbBridge');
+
+    try {
+      await transferFile(deviceId, action, source, dest, (percentage) => {
+        // Stream the progress back to the frontend over a dedicated channel
+        event.sender.send('transfer:progress', percentage);
+      });
+      return { success: true };
+    } catch (error) {
+      console.error('Transfer Error:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
