@@ -13,7 +13,7 @@
   "license": "ISC",
   "author": "example.com",
   "type": "commonjs",
-  "main": "./out/main/index.js",
+  "main": "./out/main/main.js",
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint --cache .",
@@ -33,7 +33,10 @@
   "devDependencies": {
     "@electron-toolkit/eslint-config": "^3.0.0",
     "@electron-toolkit/eslint-config-prettier": "^3.0.1",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^6.1.2",
+    "autoprefixer": "^10.6.1",
     "electron": "^44.7.2",
     "electron-builder": "^26.15.3",
     "electron-vite": "^6.0.0",
@@ -41,9 +44,11 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
+    "postcss": "^8.5.31",
     "prettier": "^3.9.10",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
+    "tailwindcss": "^4.3.3",
     "vite": "^8.3.4"
   }
 }

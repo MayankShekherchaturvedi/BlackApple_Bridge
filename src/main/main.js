@@ -1,66 +1,124 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
-const path = require('path');
-const { getConnectedDevices } = require('./adbBridge');
+const { app, BrowserWindow, ipcMain, shell, dialog } = require("electron");
+const path = require("path");
+const {
+  getConnectedDevices,
+  listDirectory,
+  transferFile,
+} = require("./adbBridge");
 
-let mainWindow;
+let mainWindow = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1000,
-    height: 700,
+    width: 1080,
+    height: 740,
+    minWidth: 800,
+    minHeight: 560,
+    title: "BlackApple Bridge",
+    backgroundColor: "#0f172a",
+    titleBarStyle: "hiddenInset",
+    trafficLightPosition: { x: 16, y: 18 },
     webPreferences: {
-      preload: path.join(__dirname, '../preload/preload.js'),
-      nodeIntegration: false, // Security best practice
-      contextIsolation: true
-    }
+      preload: path.join(__dirname, "../preload/preload.js"),
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: false,
+    },
   });
 
-  // In development, load the React dev server (adjust port as needed)
-  // In production, load the built index.html
-  if (!app.isPackaged) {
-    mainWindow.loadURL('http://localhost:5173');
+  // electron-vite sets ELECTRON_RENDERER_URL in dev mode
+  if (process.env["ELECTRON_RENDERER_URL"]) {
+    mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
+  } else if (!app.isPackaged) {
+    mainWindow.loadURL("http://localhost:5173");
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+    mainWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
   }
+
+  // Open external links in default browser
+  mainWindow.webContents.setWindowOpenHandler((details) => {
+    shell.openExternal(details.url);
+    return { action: "deny" };
+  });
+
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+  });
 }
 
 app.whenReady().then(() => {
   createWindow();
 
-  // Register IPC Handlers
-  ipcMain.handle('adb:getDevices', async () => {
-    return await getConnectedDevices();
-  });
-
-  ipcMain.handle('adb:listDirectory', async (event, deviceId, path) => {
-    const { listDirectory } = require('./adbBridge');
-    return await listDirectory(deviceId, path);
-  });
-
-  ipcMain.handle('adb:transfer', async (event, { deviceId, action, source, dest }) => {
-    const { transferFile } = require('./adbBridge');
-
+  // IPC Handlers
+  ipcMain.handle("adb:getDevices", async () => {
     try {
-      await transferFile(deviceId, action, source, dest, (percentage) => {
-        // Stream the progress back to the frontend over a dedicated channel
-        event.sender.send('transfer:progress', percentage);
-      });
-      return { success: true };
-    } catch (error) {
-      console.error('Transfer Error:', error);
-      return { success: false, error: error.message };
+      return await getConnectedDevices();
+    } catch (err) {
+      console.error("IPC adb:getDevices error:", err);
+      return [];
     }
   });
 
-  ipcMain.handle('get-downloads-path', () => {
-    return app.getPath('downloads');
+  ipcMain.handle("adb:listDirectory", async (event, deviceId, dirPath) => {
+    try {
+      return await listDirectory(deviceId, dirPath);
+    } catch (err) {
+      console.error("IPC adb:listDirectory error:", err);
+      throw err;
+    }
   });
 
-  app.on('activate', function () {
+  ipcMain.handle(
+    "adb:transfer",
+    async (event, { deviceId, action, source, dest }) => {
+      try {
+        await transferFile(deviceId, action, source, dest, (percentage) => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send("transfer:progress", percentage);
+          }
+        });
+        return { success: true };
+      } catch (error) {
+        console.error("IPC adb:transfer error:", error);
+        return { success: false, error: error.message };
+      }
+    },
+  );
+
+  // Downloads directory paths (supported under both channel names)
+  const getDownloadsHandler = () => app.getPath("downloads");
+  ipcMain.handle("get-downloads-path", getDownloadsHandler);
+  ipcMain.handle("adb:getDownloadsPath", getDownloadsHandler);
+
+  // Shell integrations
+  ipcMain.handle("shell:showItemInFolder", async (event, fullPath) => {
+    if (fullPath) shell.showItemInFolder(fullPath);
+    return true;
+  });
+
+  ipcMain.handle("shell:openPath", async (event, fullPath) => {
+    if (fullPath) await shell.openPath(fullPath);
+    return true;
+  });
+
+  // Native macOS file picker dialog
+  ipcMain.handle("dialog:selectFiles", async () => {
+    if (!mainWindow) return [];
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ["openFile", "multiSelections"],
+      title: "Select Files to Send to Android",
+    });
+    if (!result.canceled && result.filePaths.length > 0) {
+      return result.filePaths;
+    }
+    return [];
+  });
+
+  app.on("activate", function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
 
-app.on('window-all-closed', function () {
-  if (process.platform !== 'darwin') app.quit();
+app.on("window-all-closed", function () {
+  if (process.platform !== "darwin") app.quit();
 });
