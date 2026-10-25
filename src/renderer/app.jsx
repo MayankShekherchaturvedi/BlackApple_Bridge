@@ -17,16 +17,30 @@ export default function App() {
         initDevice();
     }, []);
 
+    // Push: Mac to Android
     const handleFileDrop = (macFilePath, fileName) => {
         if (!activeDevice) return alert("No Android device connected!");
 
-        // Set the transfer state to trigger the ProgressBar component
         setActiveTransfer({
             deviceId: activeDevice,
             action: 'push',
             source: macFilePath,
-            // Append the file name to the current Android directory
             dest: `${currentAndroidPath}/${fileName}`
+        });
+    };
+
+    // NEW Pull: Android to Mac (Downloads folder)
+    const handleFileDownload = async (file) => {
+        if (!activeDevice) return;
+
+        // Ask Electron for the Mac's Downloads folder path
+        const macDownloadsPath = await window.blackAppleApi.getDownloadsPath();
+
+        setActiveTransfer({
+            deviceId: activeDevice,
+            action: 'pull',
+            source: file.path,                     // Android source file
+            dest: `${macDownloadsPath}/${file.name}` // Mac destination
         });
     };
 
@@ -42,10 +56,10 @@ export default function App() {
             </header>
 
             <div className="flex-1 flex flex-col space-y-4">
-                {/* Pass state up from FileExplorer so App knows where to drop files */}
                 <FileExplorer
                     activeDevice={activeDevice}
                     onPathChange={(newPath) => setCurrentAndroidPath(newPath)}
+                    onFileClick={handleFileDownload} // <-- Added this new prop for pulling files
                 />
 
                 <DropZone onFileDropped={handleFileDrop} />

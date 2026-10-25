@@ -52,6 +52,10 @@ app.whenReady().then(() => {
     }
   });
 
+  ipcMain.handle('get-downloads-path', () => {
+    return app.getPath('downloads');
+  });
+
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

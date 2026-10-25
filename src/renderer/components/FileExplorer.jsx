@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 // 1. Added onPathChange to the component props
-export default function FileExplorer({ activeDevice, onPathChange }) {
+export default function FileExplorer({ activeDevice, onPathChange, onFileClick }) {
     const [currentPath, setCurrentPath] = useState('/sdcard');
     const [files, setFiles] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -32,6 +32,9 @@ export default function FileExplorer({ activeDevice, onPathChange }) {
     const handleNavigate = (file) => {
         if (file.isDirectory) {
             setCurrentPath(file.path);
+        } else {
+            // 2. Trigger the pull action if it's a regular file
+            if (onFileClick) onFileClick(file);
         }
     };
 
@@ -39,6 +42,8 @@ export default function FileExplorer({ activeDevice, onPathChange }) {
         const newPath = currentPath.split('/').slice(0, -1).join('/') || '/';
         setCurrentPath(newPath);
     };
+
+
 
     return (
         <div className="bg-gray-800 rounded-lg p-4 h-96 flex flex-col">
