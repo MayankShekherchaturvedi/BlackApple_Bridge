@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
-export default function FileExplorer({ activeDevice }) {
+// 1. Added onPathChange to the component props
+export default function FileExplorer({ activeDevice, onPathChange }) {
     const [currentPath, setCurrentPath] = useState('/sdcard');
     const [files, setFiles] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -9,7 +10,12 @@ export default function FileExplorer({ activeDevice }) {
         if (activeDevice) {
             fetchDirectory(currentPath);
         }
-    }, [activeDevice, currentPath]);
+
+        // 2. Notify App.jsx whenever the path updates
+        if (onPathChange) {
+            onPathChange(currentPath);
+        }
+    }, [activeDevice, currentPath]); // Triggered when currentPath changes
 
     const fetchDirectory = async (path) => {
         setLoading(true);
