@@ -2,6 +2,10 @@ const { contextBridge, ipcRenderer, webUtils } = require("electron");
 
 contextBridge.exposeInMainWorld("blackAppleApi", {
   getDevices: () => ipcRenderer.invoke("adb:getDevices"),
+  getDeviceStatus: () => ipcRenderer.invoke("adb:getDeviceStatus"),
+  restartAdb: () => ipcRenderer.invoke("adb:restartServer"),
+  connectWireless: (ip, port) =>
+    ipcRenderer.invoke("adb:connectWireless", ip, port),
   listDirectory: (deviceId, path) =>
     ipcRenderer.invoke("adb:listDirectory", deviceId, path),
   transferFile: (options) => ipcRenderer.invoke("adb:transfer", options),

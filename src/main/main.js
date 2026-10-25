@@ -2,6 +2,9 @@ const { app, BrowserWindow, ipcMain, shell, dialog } = require("electron");
 const path = require("path");
 const {
   getConnectedDevices,
+  getDeviceStatus,
+  restartAdbServer,
+  connectWireless,
   listDirectory,
   transferFile,
 } = require("./adbBridge");
@@ -56,6 +59,40 @@ app.whenReady().then(() => {
     } catch (err) {
       console.error("IPC adb:getDevices error:", err);
       return [];
+    }
+  });
+
+  ipcMain.handle("adb:getDeviceStatus", async () => {
+    try {
+      return await getDeviceStatus();
+    } catch (err) {
+      console.error("IPC adb:getDeviceStatus error:", err);
+      return {
+        authorized: [],
+        unauthorized: [],
+        offline: [],
+        rawDevices: [],
+        usbAttached: [],
+        error: err.message,
+      };
+    }
+  });
+
+  ipcMain.handle("adb:restartServer", async () => {
+    try {
+      return await restartAdbServer();
+    } catch (err) {
+      console.error("IPC adb:restartServer error:", err);
+      return false;
+    }
+  });
+
+  ipcMain.handle("adb:connectWireless", async (event, ip, port) => {
+    try {
+      return await connectWireless(ip, port);
+    } catch (err) {
+      console.error("IPC adb:connectWireless error:", err);
+      return err.message;
     }
   });
 
